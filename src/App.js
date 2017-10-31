@@ -7,61 +7,45 @@ import './App.css'
 
 class BooksApp extends React.Component {
   state = {
-    currentlyReading: [],
-    wantToRead: [],
-    read: []
+    booksOnShelf: [],
+    searchResults: [],
+    searchQuery: ""
   }
 
   componentDidMount() {
     BooksAPI.getAll().then((books) => {
-      this.setState({
-        currentlyReading: books.filter((book) => book.shelf === 'currentlyReading')
-      })
-      this.setState({
-        wantToRead: books.filter((book) => book.shelf === 'wantToRead')
-      })
-      this.setState({
-        read: books.filter((book) => book.shelf === 'read')
-      })
+      this.setState({ booksOnShelf: books });
+    })
+  }
+
+  searchBooks = (query) => {
+    this.setState({ searchQuery: query });
+    BooksAPI.search(this.state.searchQuery, 10).then((searchResults) => {
+      if (!searchResults) {
+        this.setState({ searchResults: [] });
+      } else {
+        var modResults = this.state.searchResults.map((b) => {
+            var shelfBookEq = this.state.booksOnShelf.filter((shelfBook) => shelfBook.id === b.id ); // ERROR: Cannot find the equivalent book locally
+            if (shelfBookEq) {
+              b.shelf = shelfBookEq.shelf;
+            } else {
+              b.shelf = "none";
+            }
+          });
+        this.setState({ searchResults: modResults });
+      }
     })
   }
 
   onShelfChange = (e, book) => {
-    this.setState((state) => ({
-      currentlyReading: state.currentlyReading.filter((b) => b.id !== book.id),
-      wantToRead: state.wantToRead.filter((b) => b.id !== book.id),
-      read: state.read.filter((b) => b.id !== book.id)
-    }))
-
-    if (e.target.value === 'currentlyReading') {
-      BooksAPI.update(book, 'currentlyReading').then(() => {
+      // Remove book from current shelf, update database
+      BooksAPI.update(book, e.target.value).then(() => {
+        this.setState({ booksOnShelf: this.state.booksOnShelf.filter((b) => b.id !== book.id)});
+        // Add book to new shelf
         BooksAPI.get(book.id).then((book) => {
-          this.setState((state) => ({
-            currentlyReading: state.currentlyReading.concat([ book ])
-          }))
-        })
-      })
-    }
-
-    if (e.target.value === 'wantToRead') {
-      BooksAPI.update(book, 'wantToRead').then(() => {
-        BooksAPI.get(book.id).then((book) => {
-          this.setState((state) => ({
-            wantToRead: state.wantToRead.concat([ book ])
-          }))
-        })
-      })
-    }
-
-    if (e.target.value === 'read') {
-      BooksAPI.update(book, 'read').then(() => {
-        BooksAPI.get(book.id).then((book) => {
-          this.setState((state) => ({
-            read: state.read.concat([ book ])
-          }))
-        })
-      })
-    }
+          this.setState({ booksOnShelf: this.state.booksOnShelf.concat(book) });
+        });
+      });
   }
 
   render() {
@@ -77,7 +61,7 @@ class BooksApp extends React.Component {
                 <div className="bookshelf">
                   <h2 className="bookshelf-title">Currently Reading</h2>
                   <div className="bookshelf-books">
-                    <ListBooks books={this.state.currentlyReading} onChange={this.onShelfChange}/>
+                    <ListBooks shelf="currentlyReading" books={this.state.booksOnShelf} onChange={this.onShelfChange}/>
                   </div>
                 </div>
               </div>
@@ -87,7 +71,7 @@ class BooksApp extends React.Component {
                 <div className="bookshelf">
                   <h2 className="bookshelf-title">Want to Read</h2>
                   <div className="bookshelf-books">
-                    <ListBooks books={this.state.wantToRead} onChange={this.onShelfChange} />
+                    <ListBooks shelf="wantToRead" books={this.state.booksOnShelf} onChange={this.onShelfChange} />
                   </div>
                 </div>
               </div>
@@ -97,7 +81,7 @@ class BooksApp extends React.Component {
                 <div className="bookshelf">
                   <h2 className="bookshelf-title">Read</h2>
                   <div className="bookshelf-books">
-                    <ListBooks books={this.state.read} onChange={this.onShelfChange} />
+                    <ListBooks shelf="read" books={this.state.booksOnShelf} onChange={this.onShelfChange} />
                   </div>
                 </div>
               </div>
@@ -108,7 +92,7 @@ class BooksApp extends React.Component {
           </div>
         )}/>
         <Route path='/search' render={() => (
-          <AddBooks onChange={this.onShelfChange}/>
+          <AddBooks searchResults={this.state.searchResults} searchQuery={this.state.searchQuery} onShelfChange={this.onShelfChange} onBookSearch={this.searchBooks}/>
         )}/>
       </div>
     )

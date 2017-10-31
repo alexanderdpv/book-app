@@ -1,35 +1,9 @@
 import React, { Component } from 'react';
-import * as BooksAPI from './BooksAPI'
 import { Link } from 'react-router-dom'
-import ListBooks from './ListBooks'
 
 class AddBooks extends Component {
-  state = {
-    query: '',
-    queryResults: []
-  }
-
-  searchBooks(query) {
-    this.setState({query})
-    BooksAPI.search(this.state.query, 16).then((queryResults) => {
-      this.setState({queryResults})
-    })
-  }
-
-  onResultsChange = (e, book) => {
-    console.log("Book: " + book)
-    BooksAPI.update(book, e.target.value.toString()).then(() => {
-      this.setState({ queryResults: [] })
-      this.state.queryResults.map((book) => (
-          BooksAPI.get(book.id).then((book) => {
-          this.setState({ queryResults: this.state.queryResults.concat([ book ]) })
-        })
-      ))
-    })
-  }
-
   render() {
-    // const { onChange } = this.props
+    const { searchResults, searchQuery, onShelfChange, onBookSearch } = this.props
 
     return (
       <div className="search-books">
@@ -44,11 +18,32 @@ class AddBooks extends Component {
               However, remember that the BooksAPI.search method DOES search by title or author. So, don't worry if
               you don't find a specific author or title. Every search is limited by search terms.
             */}
-            <input type="text" value={this.state.query} placeholder="Search by title or author" onChange={(e) => this.searchBooks(e.target.value)}/>
+            <input type="text" value={searchQuery} placeholder="Search by title or author" onChange={(e) => onBookSearch(e.target.value)}/>
           </div>
         </div>
         <div className="search-books-results">
-          <ListBooks onChange={(e) => this.onResultsChange()} books={this.state.queryResults}/>
+          <ol className="books-grid">
+            {searchResults.map((book) => (
+              <li key={book.id}>
+                <div className="book">
+                  <div className="book-top">
+                    <div className="book-cover" style={{ width: 128, height: 193, backgroundImage: `url(${book.imageLinks.thumbnail})`}}></div>
+                    <div className="book-shelf-changer">
+                      <select value={book.shelf} onChange={(e) => onShelfChange(e, book)}>
+                        <option value="" disabled>Move to...</option>
+                        <option value="currentlyReading">Currently Reading</option>
+                        <option value="wantToRead">Want to Read</option>
+                        <option value="read">Read</option>
+                        <option value="none">None</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="book-title"><span>{book.title}</span></div>
+                  <div className="book-authors"><span>{book.authors}</span></div>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     )
